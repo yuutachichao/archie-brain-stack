@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+
+brain-tools/archie_config.json
+archie-tools/archie_config.json
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.DS_Store
