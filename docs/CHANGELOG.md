@@ -6,6 +6,10 @@
 - `docs/ARCHIE_ZEABUR_RUNBOOK.md`
 - `docs/ARCHIE_AUTOMATION_MIGRATION_GUIDE.md`
 - `docs/CHANGELOG.md`
+- `docs/ARCHIE_DAILY_TEMPLATES.md`
+- `docs/ARCHIE_PARENT_MODE_TEMPLATES.md`
+- `docs/DEPLOY_DEBUG_PLAYBOOK.md`
+- `docs/OPENCLAW_INTEGRATION_CHECKLIST.md`
 
 ### Infrastructure / Deployment
 - Added root `Dockerfile` to force Zeabur Python API deployment (avoid Caddy static mis-detection)
