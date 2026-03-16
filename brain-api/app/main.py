@@ -352,3 +352,101 @@ def delete_article(article_id: str, authorization: Optional[str] = Header(defaul
             conn.commit()
     
     return {"ok": True, "deleted": article_id, "vectors_deleted": len(point_ids)}
+
+
+@app.get("/export")
+def export_all(authorization: Optional[str] = Header(default=None)):
+    """Export all articles with full content"""
+    check_auth(authorization)
+    
+    articles = []
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            # Get all articles
+            cur.execute("""
+                SELECT id, title, source_url, source_type, author, language, 
+                       raw_content, clean_content, summary, key_points, tags, 
+                       assistant_notes, created_at
+                FROM articles 
+                ORDER BY created_at DESC
+            """)
+            rows = cur.fetchall()
+            
+            for row in rows:
+                article_id = str(row[0])
+                
+                # Get all chunks for this article
+                cur.execute(
+                    "SELECT chunk_index, chunk_text FROM article_chunks WHERE article_id = %s ORDER BY chunk_index",
+                    (article_id,)
+                )
+                chunks = [{"index": c[0], "text": c[1]} for c in cur.fetchall()]
+                
+                articles.append({
+                    "id": article_id,
+                    "title": row[1],
+                    "source_url": row[2],
+                    "source_type": row[3],
+                    "author": row[4],
+                    "language": row[5],
+                    "raw_content": row[6],
+                    "clean_content": row[7],
+                    "summary": row[8],
+                    "key_points": row[9],
+                    "tags": row[10],
+                    "assistant_notes": row[11],
+                    "created_at": row[12].isoformat() if row[12] else None,
+                    "chunks": chunks,
+                })
+    
+    return {
+        "ok": True, 
+        "count": len(articles),
+        "articles": articles
+    }
+
+
+@app.get("/export/{article_id}")
+def export_article(article_id: str, authorization: Optional[str] = Header(default=None)):
+    """Export a single article with full content"""
+    check_auth(authorization)
+    
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, title, source_url, source_type, author, language, 
+                       raw_content, clean_content, summary, key_points, tags, 
+                       assistant_notes, created_at
+                FROM articles WHERE id = %s
+            """, (article_id,))
+            row = cur.fetchone()
+            
+            if not row:
+                raise HTTPException(status_code=404, detail="article not found")
+            
+            # Get all chunks
+            cur.execute(
+                "SELECT chunk_index, chunk_text FROM article_chunks WHERE article_id = %s ORDER BY chunk_index",
+                (article_id,)
+            )
+            chunks = [{"index": c[0], "text": c[1]} for c in cur.fetchall()]
+            
+            return {
+                "ok": True,
+                "article": {
+                    "id": str(row[0]),
+                    "title": row[1],
+                    "source_url": row[2],
+                    "source_type": row[3],
+                    "author": row[4],
+                    "language": row[5],
+                    "raw_content": row[6],
+                    "clean_content": row[7],
+                    "summary": row[8],
+                    "key_points": row[9],
+                    "tags": row[10],
+                    "assistant_notes": row[11],
+                    "created_at": row[12].isoformat() if row[12] else None,
+                    "chunks": chunks,
+                }
+            }
