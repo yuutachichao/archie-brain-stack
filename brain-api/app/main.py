@@ -317,3 +317,38 @@ def fetch_chunk_text(chunk_id: Optional[str]) -> Optional[str]:
             cur.execute("select chunk_text from article_chunks where id = %s", (chunk_id,))
             row = cur.fetchone()
             return row[0] if row else None
+
+
+@app.delete("/article/{article_id}")
+def delete_article(article_id: str, authorization: Optional[str] = Header(default=None)):
+    check_auth(authorization)
+    
+    # 1. Get all chunk IDs for this article
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "select qdrant_point_id from article_chunks where article_id = %s",
+                (article_id,),
+            )
+            point_ids = [row[0] for row in cur.fetchall()]
+    
+    # 2. Delete vectors from Qdrant
+    if point_ids:
+        qres = requests.post(
+            f"{QDRANT_URL}/collections/{QDRANT_COLLECTION}/points/delete",
+            json={"points": point_ids},
+            headers=QDRANT_HEADERS,
+            timeout=60,
+        )
+        if qres.status_code not in (200, 201):
+            # Continue even if Qdrant delete fails (might already be gone)
+            pass
+    
+    # 3. Delete from PostgreSQL (chunks first, then article)
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("delete from article_chunks where article_id = %s", (article_id,))
+            cur.execute("delete from articles where id = %s", (article_id,))
+            conn.commit()
+    
+    return {"ok": True, "deleted": article_id, "vectors_deleted": len(point_ids)}
