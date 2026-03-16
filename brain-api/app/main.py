@@ -329,7 +329,7 @@ def delete_article(article_id: str, authorization: Optional[str] = Header(defaul
                 "select qdrant_point_id from article_chunks where article_id = %s",
                 (article_id,),
             )
-            point_ids = [row[0] for row in cur.fetchall()]
+            point_ids = [str(row[0]) for row in cur.fetchall()]
     
     # 2. Delete vectors from Qdrant
     if point_ids:
